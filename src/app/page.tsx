@@ -39,11 +39,6 @@ export default function Home() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchInitialData();
-    trackPageView();
-  }, []);
-
   const fetchInitialData = async () => {
     setLoading(true);
     await Promise.all([fetchPricings(), fetchServices()]);
@@ -79,6 +74,13 @@ export default function Home() {
     }
   };
 
+
+  useEffect(() => {
+    fetchInitialData();
+    trackPageView();
+  }, []);
+
+  
   return (
     <main className="min-h-screen bg-gradient-to-b from-neutral-950 via-zinc-900 to-black">
       {/* Hero Section */}
