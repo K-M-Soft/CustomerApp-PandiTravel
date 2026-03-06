@@ -5,15 +5,50 @@ import Image from 'next/image';
 import BookingForm from '@/components/BookingForm';
 import ContactForm from '@/components/ContactForm';
 import ServiceCard from '@/components/ServiceCard';
-import { Pricing } from '@/lib/data';
+import type { Pricing, Service } from '@/lib/data';
+
+const fallbackServices: Pick<Service, 'id' | 'title' | 'description'>[] = [
+  {
+    id: -1,
+    title: 'Rugalmas és biztonságos utazási lehetőségek',
+    description:
+      'Sofőrszolgáltatásunk a hét MINDEN NAPJÁN elérhető, akár előre egyeztetett - akár azonnali szükség esetén igénybevehető! Kérjük ügyfeleinket, lehetőség szerint e-mailben vagy telefonon előre egyeztetve keressék sofőr szolgáltatásunkat!',
+  },
+  {
+    id: -2,
+    title: 'VIP transzfer szolgáltatás',
+    description:
+      'A Tesla transzfer lehetővé teszi, hogy környezetbarát módon utazhass és élvezhesd a modern technológia előnyeit, csendes környezetben és tisztaságban! A VIP transzfer szolgáltatás lehetővé teszi, hogy kényelmesen és stílusosan érkezzünk úti célunkhoz, akár várakozásról, akár oda-vissza útról legyen szó!',
+  },
+  {
+    id: -3,
+    title: 'Utazási tanácsadás Teslával',
+    description:
+      'Kényelmes, csendes, biztonságos, mindent igényt kielégítő Tesla Model 3-as autóval utazva adjuk át Önnek az utazás élményét! BELFÖLDÖN és KÜLFÖLDÖN egyaránt vállalunk személyszállító sofőr szolgáltatást, előre megbeszélt áron és időben - vagy akár azonnali szükség esetén is!',
+  },
+  {
+    id: -4,
+    title: 'Árlista',
+    description:
+      'Utazásaink árát előre meghatározott tarifán számoljuk, amiket feltüntetünk több fórumon is! Alapdíjból és Km/viteldíjból határozzuk meg a személyszállítási fuvar teljes költségét, amit már indulás előtt az Ügyfél tudtára adunk! Ezáltal kiszámíthatóan és pontosan, váratlan kiadás nélkül igyekszünk minden Ügyfelünket biztosítani és kielégíteni már az úticél elérését megelőzően! :)',
+  },
+];
 
 export default function Home() {
   const [pricings, setPricings] = useState<Pricing[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPricings();
+    fetchInitialData();
+    trackPageView();
   }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    await Promise.all([fetchPricings(), fetchServices()]);
+    setLoading(false);
+  };
 
   const fetchPricings = async () => {
     try {
@@ -22,8 +57,25 @@ export default function Home() {
       setPricings(data);
     } catch (error) {
       console.error('Failed to fetch pricings:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch('/api/services');
+      const data = await response.json();
+      setServices(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch services:', error);
+      setServices([]);
+    }
+  };
+
+  const trackPageView = async () => {
+    try {
+      await fetch('/api/analytics/view', { method: 'POST' });
+    } catch (error) {
+      console.error('Failed to track page view:', error);
     }
   };
 
@@ -80,25 +132,9 @@ export default function Home() {
         <div className="h-1 w-24 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-12 rounded-full animate-fade-in"></div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-          <ServiceCard
-            title="Rugalmas és biztonságos utazási lehetőségek"
-            description="Sofőrszolgáltatásunk a hét MINDEN NAPJÁN elérhető, akár előre egyeztetett - akár azonnali szükség esetén igénybevehető! Kérjük ügyfeleinket, lehetőség szerint e-mailben vagy telefonon előre egyeztetve keressék sofőr szolgáltatásunkat!"
-          />
-
-          <ServiceCard
-            title="VIP transzfer szolgáltatás"
-            description="A Tesla transzfer lehetővé teszi, hogy környezetbarát módon utazhass és élvezhesd a modern technológia előnyeit, csendes környezetben és tisztaságban! A VIP transzfer szolgáltatás lehetővé teszi, hogy kényelmesen és stílusosan érkezzünk úti célunkhoz, akár várakozásról, akár oda-vissza útról legyen szó!"
-          />
-
-          <ServiceCard
-            title="Utazási tanácsadás Teslával"
-            description="Kényelmes, csendes, biztonságos, mindent igényt kielégítő Tesla Model 3-as autóval utazva adjuk át Önnek az utazás élményét! BELFÖLDÖN és KÜLFÖLDÖN egyaránt vállalunk személyszállító sofőr szolgáltatást, előre megbeszélt áron és időben - vagy akár azonnali szükség esetén is!"
-          />
-
-          <ServiceCard
-            title="Árlista"
-            description="Utazásaink árát előre meghatározott tarifán számoljuk, amiket feltüntetünk több fórumon is! Alapdíjból és Km/viteldíjból határozzuk meg a személyszállítási fuvar teljes költségét, amit már indulás előtt az Ügyfél tudtára adunk! Ezáltal kiszámíthatóan és pontosan, váratlan kiadás nélkül igyekszünk minden Ügyfelünket biztosítani és kielégíteni már az úticél elérését megelőzően! :)"
-          />
+          {(services.length > 0 ? services : fallbackServices).map((service) => (
+            <ServiceCard key={service.id} title={service.title} description={service.description} />
+          ))}
         </div>
       </section>
 

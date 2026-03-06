@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllPricings, addPricing, updatePricing, deletePricing, getPricingById } from '@/lib/data';
+import { isAdminRequest } from '@/lib/admin-auth';
 import { z } from 'zod';
 
 const pricingSchema = z.object({
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Nincs jogosultság.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const validatedData = pricingSchema.parse(body);
@@ -44,6 +49,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Nincs jogosultság.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -68,6 +77,10 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Nincs jogosultság.' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

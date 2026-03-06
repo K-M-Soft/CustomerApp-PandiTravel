@@ -76,12 +76,35 @@ function initializeSchema() {
     );
   `);
 
+  // Services table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS services (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Monthly page view analytics table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS page_views_monthly (
+      month TEXT PRIMARY KEY,
+      views INTEGER NOT NULL DEFAULT 0,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Create indexes for better query performance
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email);
     CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
     CREATE INDEX IF NOT EXISTS idx_distances_locations ON distances(from_location, to_location);
+    CREATE INDEX IF NOT EXISTS idx_services_sort_order ON services(sortOrder);
   `);
+
 }
 
 export function closeDb() {

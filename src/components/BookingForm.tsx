@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pricing } from '@/lib/data';
+import type { Pricing } from '@/lib/data';
 import DatePicker from 'react-datepicker';
 import { hu } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
