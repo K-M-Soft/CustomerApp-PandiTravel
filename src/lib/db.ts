@@ -4,23 +4,31 @@ let pool: Pool | null = null;
 let schemaInitPromise: Promise<void> | null = null;
 
 function getPoolConfig(): PoolConfig {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (databaseUrl) {
+  const connectionString = [
+    process.env.POSTGRES_URL,
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_PRISMA_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
+  ]
+    .map((value) => value?.trim())
+    .find((value): value is string => Boolean(value));
+
+  if (connectionString) {
     return {
-      connectionString: databaseUrl,
+      connectionString,
       ssl: { rejectUnauthorized: false },
     };
   }
 
   const host = process.env.POSTGRES_HOST?.trim();
   const port = Number(process.env.POSTGRES_PORT || '5432');
-  const database = process.env.POSTGRES_DB?.trim() || 'postgres';
+  const database = process.env.POSTGRES_DB?.trim() || process.env.POSTGRES_DATABASE?.trim() || 'postgres';
   const user = process.env.POSTGRES_USER?.trim() || 'postgres';
   const password = process.env.POSTGRES_PASSWORD?.trim();
 
   if (!host || !password) {
     throw new Error(
-      'Hiányzó PostgreSQL konfiguráció. Állítsd be a DATABASE_URL értéket vagy a POSTGRES_HOST/POSTGRES_PORT/POSTGRES_DB/POSTGRES_USER/POSTGRES_PASSWORD változókat.'
+      'Hiányzó PostgreSQL konfiguráció. Állítsd be a DATABASE_URL/POSTGRES_URL változót vagy a POSTGRES_HOST/POSTGRES_PORT/POSTGRES_DB/POSTGRES_DATABASE/POSTGRES_USER/POSTGRES_PASSWORD változókat.'
     );
   }
 
