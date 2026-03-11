@@ -49,16 +49,23 @@ export default function Home() {
   const fetchPricings = async () => {
     try {
       const response = await fetch('/api/pricing');
+      if (!response.ok) {
+        throw new Error(`Pricing API error: ${response.status}`);
+      }
       const data = await response.json();
-      setPricings(data);
+      setPricings(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch pricings:', error);
+      setPricings([]);
     }
   };
 
   const fetchServices = async () => {
     try {
       const response = await fetch('/api/services');
+      if (!response.ok) {
+        throw new Error(`Services API error: ${response.status}`);
+      }
       const data = await response.json();
       setServices(Array.isArray(data) ? data : []);
     } catch (error) {

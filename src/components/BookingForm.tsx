@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Pricing } from '@/lib/data';
 import DatePicker from 'react-datepicker';
 import { hu } from 'date-fns/locale';
@@ -18,6 +18,7 @@ interface BookingApiError {
 }
 
 export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
+  const pricingOptions = useMemo(() => (Array.isArray(pricings) ? pricings : []), [pricings]);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -28,7 +29,7 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
     phone: '',
     from_location: '',
     to_location: '',
-    pricingId: pricings[0]?.id || 0,
+    pricingId: pricingOptions[0]?.id || 0,
     date: '',
     passengers: 1,
     tripType: 'one-way',
@@ -38,18 +39,18 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
   });
 
   useEffect(() => {
-    if (pricings.length === 0) {
+    if (pricingOptions.length === 0) {
       return;
     }
 
-    const hasCurrentPricing = pricings.some((pricing) => pricing.id === formData.pricingId);
+    const hasCurrentPricing = pricingOptions.some((pricing) => pricing.id === formData.pricingId);
     if (!hasCurrentPricing) {
       setFormData((prev) => ({
         ...prev,
-        pricingId: pricings[0].id,
+        pricingId: pricingOptions[0].id,
       }));
     }
-  }, [pricings, formData.pricingId]);
+  }, [pricingOptions, formData.pricingId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -152,7 +153,7 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
         phone: '',
         from_location: '',
         to_location: '',
-        pricingId: pricings[0]?.id || 0,
+        pricingId: pricingOptions[0]?.id || 0,
         date: '',
         passengers: 1,
         tripType: 'one-way',
@@ -248,7 +249,7 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
                 : 'border-slate-600 focus:border-[rgb(244,204,126)] focus:ring-[rgba(244,204,126,0.25)]'
             }`}
           >
-            {pricings?.map((pricing) => (
+            {pricingOptions.map((pricing) => (
               <option key={pricing.id} value={pricing.id}>
                 {pricing.name}
               </option>
