@@ -1,0 +1,11 @@
+# Pándi Travel - Robots.txt
+
+User-agent: *
+Allow: /
+
+# Disallow admin routes
+Disallow: /admin
+Disallow: /api/admin
+
+# Sitemap
+Sitemap: https://panditravel.hu/sitemap.xml
