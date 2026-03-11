@@ -3,30 +3,72 @@ import nodemailer from 'nodemailer';
 // Email configuration - production ready
 let transporter: nodemailer.Transporter | null = null;
 
+function getSanitizedEnvValue(value?: string) {
+  if (!value) return '';
+  return value.trim();
+}
+
+function getGmailPassword() {
+  // Google app passwords are sometimes pasted with spaces every 4 chars.
+  // Remove all whitespace to avoid auth issues.
+  return getSanitizedEnvValue(process.env.GMAIL_APP_PASSWORD).replace(/\s+/g, '');
+}
+
+function ensureEmailConfig(provider: string) {
+  if (provider === 'gmail') {
+    const gmailUser = getSanitizedEnvValue(process.env.GMAIL_EMAIL);
+    const gmailPass = getGmailPassword();
+
+    if (!gmailUser || !gmailPass) {
+      throw new Error(
+        'Hiányzó Gmail email konfiguráció: állítsd be a GMAIL_EMAIL és GMAIL_APP_PASSWORD változókat.'
+      );
+    }
+    return;
+  }
+
+  const smtpUser = getSanitizedEnvValue(process.env.SMTP_USER);
+  const smtpPass = getSanitizedEnvValue(process.env.SMTP_PASSWORD);
+
+  // If one of them is present, require both.
+  if ((smtpUser && !smtpPass) || (!smtpUser && smtpPass)) {
+    throw new Error(
+      'Hiányos SMTP auth konfiguráció: a SMTP_USER és SMTP_PASSWORD mezőket együtt kell beállítani.'
+    );
+  }
+}
+
 export function getEmailTransporter() {
   if (!transporter) {
-    const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
+    const emailProvider = getSanitizedEnvValue(process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
+    ensureEmailConfig(emailProvider);
 
     if (emailProvider === 'gmail') {
+      const gmailUser = getSanitizedEnvValue(process.env.GMAIL_EMAIL);
+      const gmailPass = getGmailPassword();
+
       transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
         auth: {
-          user: process.env.GMAIL_EMAIL,
-          pass: process.env.GMAIL_APP_PASSWORD,
+          user: gmailUser,
+          pass: gmailPass,
         },
       });
     } else {
+      const smtpUser = getSanitizedEnvValue(process.env.SMTP_USER);
+      const smtpPass = getSanitizedEnvValue(process.env.SMTP_PASSWORD);
+
       // Generic SMTP configuration
       transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'localhost',
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: process.env.SMTP_SECURE === 'true',
-        auth: process.env.SMTP_USER
+        auth: smtpUser && smtpPass
           ? {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASSWORD,
+              user: smtpUser,
+              pass: smtpPass,
             }
           : undefined,
       });
@@ -46,7 +88,7 @@ export interface EmailOptions {
 export async function sendEmail(options: EmailOptions) {
   try {
     const transporter = getEmailTransporter();
-    const from = process.env.EMAIL_FROM || 'contact@pandi-travel.hu';
+    const from = getSanitizedEnvValue(process.env.EMAIL_FROM) || 'contact@pandi-travel.hu';
 
     const result = await transporter.sendMail({
       from,
