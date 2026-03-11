@@ -12,7 +12,7 @@ const pricingSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const pricings = getAllPricings();
+    const pricings = await getAllPricings();
     return NextResponse.json(pricings);
   } catch (error) {
     console.error('Get pricings error:', error);
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = pricingSchema.parse(body);
 
-    const pricing = addPricing({
+    const pricing = await addPricing({
       name: validatedData.name,
       pricePerKm: validatedData.pricePerKm,
       basePrice: validatedData.basePrice,
@@ -61,13 +61,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
-    const pricing = getPricingById(id);
+    const pricing = await getPricingById(id);
     if (!pricing) {
       return NextResponse.json({ error: 'Pricing not found' }, { status: 404 });
     }
 
-    updatePricing(id, updateData);
-    const updated = getPricingById(id);
+    await updatePricing(id, updateData);
+    const updated = await getPricingById(id);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -89,12 +89,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
-    const pricing = getPricingById(parseInt(id));
+    const pricing = await getPricingById(parseInt(id));
     if (!pricing) {
       return NextResponse.json({ error: 'Pricing not found' }, { status: 404 });
     }
 
-    deletePricing(parseInt(id));
+    await deletePricing(parseInt(id));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete pricing error:', error);

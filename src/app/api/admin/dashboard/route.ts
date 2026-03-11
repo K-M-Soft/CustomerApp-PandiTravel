@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { getMonthlyPageViews, getAllPricings, getAllServices } from '@/lib/data';
-import { getDb } from '@/lib/db';
+import { initializeSchema, query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   if (!isAdminRequest(request)) {
@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const db = getDb();
-    const bookings = db
-      .prepare(`
+    await initializeSchema();
+    const bookings = (
+      await query(`
         SELECT
           b.id,
           b.name,
@@ -19,23 +19,23 @@ export async function GET(request: NextRequest) {
           b.phone,
           b.from_location,
           b.to_location,
-          b.tripType,
+          b."tripType" as "tripType",
           b.date,
           b.passengers,
           p.name as serviceName,
-          b.createdAt
+          b."createdAt" as "createdAt"
         FROM bookings b
-        LEFT JOIN pricing p ON p.id = b.pricingId
-        ORDER BY b.createdAt DESC
+        LEFT JOIN pricing p ON p.id = b."pricingId"
+        ORDER BY b."createdAt" DESC
         LIMIT 200
       `)
-      .all();
+    ).rows;
 
     return NextResponse.json({
-      monthlyViews: getMonthlyPageViews(),
+      monthlyViews: await getMonthlyPageViews(),
       bookings,
-      pricings: getAllPricings(),
-      services: getAllServices(),
+      pricings: await getAllPricings(),
+      services: await getAllServices(),
     });
   } catch (error) {
     console.error('Admin dashboard error:', error);

@@ -11,7 +11,7 @@ const serviceSchema = z.object({
 
 export async function GET() {
   try {
-    return NextResponse.json(getAllServices());
+    return NextResponse.json(await getAllServices());
   } catch (error) {
     console.error('Get services error:', error);
     return NextResponse.json({ error: 'Szolgáltatások lekérése sikertelen.' }, { status: 500 });
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = serviceSchema.parse(body);
-    const created = addService(validatedData);
+    const created = await addService(validatedData);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error('Create service error:', error);
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const payload = serviceSchema.partial().parse(body);
-    updateService(id, payload);
+    await updateService(id, payload);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Update service error:', error);
@@ -73,7 +73,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Hiányzik az ID.' }, { status: 400 });
     }
 
-    deleteService(id);
+    await deleteService(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete service error:', error);

@@ -3,7 +3,7 @@ import { incrementMonthlyPageView } from '@/lib/data';
 
 export async function POST() {
   try {
-    incrementMonthlyPageView();
+    await incrementMonthlyPageView();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Track view error:', error);

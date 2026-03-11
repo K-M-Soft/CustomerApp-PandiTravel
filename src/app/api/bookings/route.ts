@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { initializeSchema, query } from '@/lib/db';
 import { calculatePrice, getPricingById } from '@/lib/data';
 import { sendEmail, generateBookingConfirmationEmail, generateAdminNotificationEmail } from '@/lib/email';
 import { z } from 'zod';
@@ -36,10 +36,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = bookingSchema.parse(body);
+    await initializeSchema();
 
-    const db = getDb();
-
-    const pricing = getPricingById(validatedData.pricingId);
+    const pricing = await getPricingById(validatedData.pricingId);
     if (!pricing) {
       return NextResponse.json(
         {
@@ -53,33 +52,50 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate fixed package price
-    const priceInfo = calculatePrice(validatedData.pricingId);
+    const priceInfo = await calculatePrice(validatedData.pricingId);
 
     // Insert booking
-    const stmt = db.prepare(`
-      INSERT INTO bookings 
-      (name, email, phone, from_location, to_location, kilometers, pricingId, totalPrice, date, passengers, tripType, luggageCount, luggageSize, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
-      validatedData.name,
-      validatedData.email,
-      validatedData.phone || null,
-      validatedData.from_location,
-      validatedData.to_location,
-      null,
-      validatedData.pricingId,
-      priceInfo.totalPrice,
-      validatedData.date || null,
-      validatedData.passengers || 1,
-      validatedData.tripType || 'one-way',
-      validatedData.luggageCount || 0,
-      validatedData.luggageSize || null,
-      validatedData.notes || null
+    const result = await query<{ id: number }>(
+      `
+      INSERT INTO bookings
+      (
+        name,
+        email,
+        phone,
+        from_location,
+        to_location,
+        kilometers,
+        "pricingId",
+        "totalPrice",
+        date,
+        passengers,
+        "tripType",
+        "luggageCount",
+        "luggageSize",
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id
+      `,
+      [
+        validatedData.name,
+        validatedData.email,
+        validatedData.phone || null,
+        validatedData.from_location,
+        validatedData.to_location,
+        null,
+        validatedData.pricingId,
+        priceInfo.totalPrice,
+        validatedData.date || null,
+        validatedData.passengers || 1,
+        validatedData.tripType || 'one-way',
+        validatedData.luggageCount || 0,
+        validatedData.luggageSize || null,
+        validatedData.notes || null,
+      ]
     );
 
-    const bookingId = result.lastInsertRowid as number;
+    const bookingId = Number(result.rows[0].id);
 
     // Send confirmation email to client
     try {
@@ -166,8 +182,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const db = getDb();
-    const bookings = db.prepare('SELECT * FROM bookings ORDER BY createdAt DESC').all();
+    await initializeSchema();
+    const bookings = (await query('SELECT * FROM bookings ORDER BY "createdAt" DESC')).rows;
     return NextResponse.json(bookings);
   } catch (error) {
     console.error('Get bookings error:', error);

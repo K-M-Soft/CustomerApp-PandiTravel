@@ -1,4 +1,4 @@
-import { getDb } from './db';
+import { initializeSchema, query } from './db';
 
 export interface Pricing {
   id: number;
@@ -20,104 +20,141 @@ export interface MonthlyView {
   views: number;
 }
 
-// Pricing operations
-export function getAllPricings(): Pricing[] {
-  const db = getDb();
-  const stmt = db.prepare('SELECT * FROM pricing ORDER BY name');
-  return stmt.all() as Pricing[];
-}
+type PricingRow = {
+  id: number;
+  name: string;
+  pricePerKm: number;
+  basePrice: number;
+  description: string | null;
+};
 
-export function getPricingById(id: number): Pricing | undefined {
-  const db = getDb();
-  const stmt = db.prepare('SELECT * FROM pricing WHERE id = ?');
-  return stmt.get(id) as Pricing | undefined;
-}
-
-export function addPricing(pricing: Omit<Pricing, 'id'>): Pricing {
-  const db = getDb();
-  const stmt = db.prepare(
-    'INSERT INTO pricing (name, pricePerKm, basePrice, description) VALUES (?, ?, ?, ?)'
-  );
-  const result = stmt.run(pricing.name, pricing.pricePerKm, pricing.basePrice, pricing.description);
-  
+function mapPricing(row: PricingRow): Pricing {
   return {
-    id: result.lastInsertRowid as number,
+    id: Number(row.id),
+    name: row.name,
+    pricePerKm: Number(row.pricePerKm),
+    basePrice: Number(row.basePrice),
+    description: row.description || undefined,
+  };
+}
+
+async function ensureSchema() {
+  await initializeSchema();
+}
+
+// Pricing operations
+export async function getAllPricings(): Promise<Pricing[]> {
+  await ensureSchema();
+  const result = await query<PricingRow>(
+    'SELECT id, name, "pricePerKm" as "pricePerKm", "basePrice" as "basePrice", description FROM pricing ORDER BY name'
+  );
+  return result.rows.map(mapPricing);
+}
+
+export async function getPricingById(id: number): Promise<Pricing | undefined> {
+  await ensureSchema();
+  const result = await query<PricingRow>(
+    'SELECT id, name, "pricePerKm" as "pricePerKm", "basePrice" as "basePrice", description FROM pricing WHERE id = $1 LIMIT 1',
+    [id]
+  );
+  if (!result.rows[0]) {
+    return undefined;
+  }
+  return mapPricing(result.rows[0]);
+}
+
+export async function addPricing(pricing: Omit<Pricing, 'id'>): Promise<Pricing> {
+  await ensureSchema();
+  const result = await query<{ id: number }>(
+    'INSERT INTO pricing (name, "pricePerKm", "basePrice", description) VALUES ($1, $2, $3, $4) RETURNING id',
+    [pricing.name, pricing.pricePerKm, pricing.basePrice, pricing.description || null]
+  );
+
+  return {
+    id: Number(result.rows[0].id),
     ...pricing,
   };
 }
 
-export function updatePricing(id: number, pricing: Partial<Omit<Pricing, 'id'>>): void {
-  const db = getDb();
+export async function updatePricing(id: number, pricing: Partial<Omit<Pricing, 'id'>>): Promise<void> {
+  await ensureSchema();
   const updates: string[] = [];
-  const values: (string | number | undefined)[] = [];
+  const values: (string | number | null)[] = [];
 
   if (pricing.name !== undefined) {
-    updates.push('name = ?');
+    updates.push(`name = $${values.length + 1}`);
     values.push(pricing.name);
   }
   if (pricing.pricePerKm !== undefined) {
-    updates.push('pricePerKm = ?');
+    updates.push(`"pricePerKm" = $${values.length + 1}`);
     values.push(pricing.pricePerKm);
   }
   if (pricing.basePrice !== undefined) {
-    updates.push('basePrice = ?');
+    updates.push(`"basePrice" = $${values.length + 1}`);
     values.push(pricing.basePrice);
   }
   if (pricing.description !== undefined) {
-    updates.push('description = ?');
-    values.push(pricing.description);
+    updates.push(`description = $${values.length + 1}`);
+    values.push(pricing.description || null);
   }
 
-  if (updates.length === 0) return;
+  if (updates.length === 0) {
+    return;
+  }
 
-  updates.push('updatedAt = CURRENT_TIMESTAMP');
+  updates.push('"updatedAt" = NOW()');
   values.push(id);
 
-  const stmt = db.prepare(`UPDATE pricing SET ${updates.join(', ')} WHERE id = ?`);
-  stmt.run(...values);
+  await query(`UPDATE pricing SET ${updates.join(', ')} WHERE id = $${values.length}`, values);
 }
 
-export function deletePricing(id: number): void {
-  const db = getDb();
-  const stmt = db.prepare('DELETE FROM pricing WHERE id = ?');
-  stmt.run(id);
+export async function deletePricing(id: number): Promise<void> {
+  await ensureSchema();
+  await query('DELETE FROM pricing WHERE id = $1', [id]);
 }
 
 // Service operations
-export function getAllServices(): Service[] {
-  const db = getDb();
-  const stmt = db.prepare('SELECT id, title, description, sortOrder FROM services ORDER BY sortOrder ASC, id ASC');
-  return stmt.all() as Service[];
+export async function getAllServices(): Promise<Service[]> {
+  await ensureSchema();
+  const result = await query<Service>(
+    'SELECT id, title, description, "sortOrder" as "sortOrder" FROM services ORDER BY "sortOrder" ASC, id ASC'
+  );
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    title: row.title,
+    description: row.description,
+    sortOrder: Number(row.sortOrder),
+  }));
 }
 
-export function addService(service: Omit<Service, 'id'>): Service {
-  const db = getDb();
-  const stmt = db.prepare(
-    'INSERT INTO services (title, description, sortOrder) VALUES (?, ?, ?)'
+export async function addService(service: Omit<Service, 'id'>): Promise<Service> {
+  await ensureSchema();
+  const result = await query<{ id: number }>(
+    'INSERT INTO services (title, description, "sortOrder") VALUES ($1, $2, $3) RETURNING id',
+    [service.title, service.description, service.sortOrder]
   );
-  const result = stmt.run(service.title, service.description, service.sortOrder);
 
   return {
-    id: result.lastInsertRowid as number,
+    id: Number(result.rows[0].id),
     ...service,
   };
 }
 
-export function updateService(id: number, service: Partial<Omit<Service, 'id'>>): void {
-  const db = getDb();
+export async function updateService(id: number, service: Partial<Omit<Service, 'id'>>): Promise<void> {
+  await ensureSchema();
   const updates: string[] = [];
   const values: (string | number)[] = [];
 
   if (service.title !== undefined) {
-    updates.push('title = ?');
+    updates.push(`title = $${values.length + 1}`);
     values.push(service.title);
   }
   if (service.description !== undefined) {
-    updates.push('description = ?');
+    updates.push(`description = $${values.length + 1}`);
     values.push(service.description);
   }
   if (service.sortOrder !== undefined) {
-    updates.push('sortOrder = ?');
+    updates.push(`"sortOrder" = $${values.length + 1}`);
     values.push(service.sortOrder);
   }
 
@@ -125,47 +162,47 @@ export function updateService(id: number, service: Partial<Omit<Service, 'id'>>)
     return;
   }
 
-  updates.push('updatedAt = CURRENT_TIMESTAMP');
+  updates.push('"updatedAt" = NOW()');
   values.push(id);
 
-  const stmt = db.prepare(`UPDATE services SET ${updates.join(', ')} WHERE id = ?`);
-  stmt.run(...values);
+  await query(`UPDATE services SET ${updates.join(', ')} WHERE id = $${values.length}`, values);
 }
 
-export function deleteService(id: number): void {
-  const db = getDb();
-  const stmt = db.prepare('DELETE FROM services WHERE id = ?');
-  stmt.run(id);
+export async function deleteService(id: number): Promise<void> {
+  await ensureSchema();
+  await query('DELETE FROM services WHERE id = $1', [id]);
 }
 
 // Analytics operations
-export function incrementMonthlyPageView(date: Date = new Date()): void {
-  const db = getDb();
+export async function incrementMonthlyPageView(date: Date = new Date()): Promise<void> {
+  await ensureSchema();
   const month = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 
-  const stmt = db.prepare(`
-    INSERT INTO page_views_monthly (month, views, updatedAt)
-    VALUES (?, 1, CURRENT_TIMESTAMP)
-    ON CONFLICT(month)
-    DO UPDATE SET views = views + 1, updatedAt = CURRENT_TIMESTAMP
-  `);
-
-  stmt.run(month);
+  await query(
+    `
+      INSERT INTO page_views_monthly (month, views, "updatedAt")
+      VALUES ($1, 1, NOW())
+      ON CONFLICT (month)
+      DO UPDATE SET views = page_views_monthly.views + 1, "updatedAt" = NOW()
+    `,
+    [month]
+  );
 }
 
-export function getMonthlyPageViews(): MonthlyView[] {
-  const db = getDb();
-  const stmt = db.prepare(
-    'SELECT month, views FROM page_views_monthly ORDER BY month DESC'
-  );
-  return stmt.all() as MonthlyView[];
+export async function getMonthlyPageViews(): Promise<MonthlyView[]> {
+  await ensureSchema();
+  const result = await query<MonthlyView>('SELECT month, views FROM page_views_monthly ORDER BY month DESC');
+  return result.rows.map((row) => ({
+    month: row.month,
+    views: Number(row.views),
+  }));
 }
 
 // Calculate fixed price based on selected pricing package.
-export function calculatePrice(
+export async function calculatePrice(
   pricingId: number
-): { totalPrice: number; breakdown: { basePrice: number; kmPrice: number } } {
-  const pricing = getPricingById(pricingId);
+): Promise<{ totalPrice: number; breakdown: { basePrice: number; kmPrice: number } }> {
+  const pricing = await getPricingById(pricingId);
   if (!pricing) {
     throw new Error('Pricing not found');
   }

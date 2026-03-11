@@ -1,102 +1,130 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import { mkdirSync } from 'fs';
+import { Pool, PoolConfig, QueryResult, QueryResultRow } from 'pg';
 
-// Production-ready SQLite database
-const dbPath = path.join(process.cwd(), 'data', 'pandi-travel.db');
+let pool: Pool | null = null;
+let schemaInitPromise: Promise<void> | null = null;
 
-let db: Database.Database;
-
-export function getDb(): Database.Database {
-  if (!db) {
-    // Ensure data directory exists
-    const dbDir = path.dirname(dbPath);
-    mkdirSync(dbDir, { recursive: true });
-    
-    db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    initializeSchema();
+function getPoolConfig(): PoolConfig {
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (databaseUrl) {
+    return {
+      connectionString: databaseUrl,
+      ssl: { rejectUnauthorized: false },
+    };
   }
-  return db;
+
+  const host = process.env.POSTGRES_HOST?.trim();
+  const port = Number(process.env.POSTGRES_PORT || '5432');
+  const database = process.env.POSTGRES_DB?.trim() || 'postgres';
+  const user = process.env.POSTGRES_USER?.trim() || 'postgres';
+  const password = process.env.POSTGRES_PASSWORD?.trim();
+
+  if (!host || !password) {
+    throw new Error(
+      'Hiányzó PostgreSQL konfiguráció. Állítsd be a DATABASE_URL értéket vagy a POSTGRES_HOST/POSTGRES_PORT/POSTGRES_DB/POSTGRES_USER/POSTGRES_PASSWORD változókat.'
+    );
+  }
+
+  return {
+    host,
+    port,
+    database,
+    user,
+    password,
+    ssl: { rejectUnauthorized: false },
+  };
 }
 
-function initializeSchema() {
-  const database = db;
-
-  // Legacy cleanup: distance-based pricing was removed.
-  database.exec(`DROP TABLE IF EXISTS distances;`);
-
-  // Pricing table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS pricing (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      pricePerKm REAL NOT NULL,
-      basePrice REAL NOT NULL,
-      description TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Bookings table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS bookings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT,
-      from_location TEXT NOT NULL,
-      to_location TEXT NOT NULL,
-      kilometers REAL,
-      pricingId INTEGER,
-      totalPrice REAL,
-      date TEXT,
-      passengers INTEGER DEFAULT 1,
-      tripType TEXT DEFAULT 'one-way',
-      luggageCount INTEGER DEFAULT 0,
-      luggageSize TEXT,
-      status TEXT DEFAULT 'pending',
-      notes TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (pricingId) REFERENCES pricing(id)
-    );
-  `);
-
-  // Services table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS services (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL,
-      sortOrder INTEGER DEFAULT 0,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Monthly page view analytics table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS page_views_monthly (
-      month TEXT PRIMARY KEY,
-      views INTEGER NOT NULL DEFAULT 0,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Create indexes for better query performance
-  database.exec(`
-    CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email);
-    CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-    CREATE INDEX IF NOT EXISTS idx_services_sort_order ON services(sortOrder);
-  `);
-
+export function getDb(): Pool {
+  if (!pool) {
+    pool = new Pool(getPoolConfig());
+  }
+  return pool;
 }
 
-export function closeDb() {
-  if (db) {
-    db.close();
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<QueryResult<T>> {
+  return getDb().query<T>(text, params);
+}
+
+export async function initializeSchema(): Promise<void> {
+  if (schemaInitPromise) {
+    return schemaInitPromise;
+  }
+
+  schemaInitPromise = (async () => {
+    const db = getDb();
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pricing (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        "pricePerKm" DOUBLE PRECISION NOT NULL,
+        "basePrice" DOUBLE PRECISION NOT NULL,
+        description TEXT,
+        "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        from_location TEXT NOT NULL,
+        to_location TEXT NOT NULL,
+        kilometers DOUBLE PRECISION,
+        "pricingId" INTEGER REFERENCES pricing(id) ON DELETE SET NULL,
+        "totalPrice" DOUBLE PRECISION,
+        date TEXT,
+        passengers INTEGER DEFAULT 1,
+        "tripType" TEXT DEFAULT 'one-way',
+        "luggageCount" INTEGER DEFAULT 0,
+        "luggageSize" TEXT,
+        status TEXT DEFAULT 'pending',
+        notes TEXT,
+        "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS services (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        "sortOrder" INTEGER DEFAULT 0,
+        "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS page_views_monthly (
+        month TEXT PRIMARY KEY,
+        views INTEGER NOT NULL DEFAULT 0,
+        "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await db.query('CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email);');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_services_sort_order ON services("sortOrder");');
+  })().catch((error) => {
+    schemaInitPromise = null;
+    throw error;
+  });
+
+  return schemaInitPromise;
+}
+
+export async function closeDb(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
+    schemaInitPromise = null;
   }
 }
