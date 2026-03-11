@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getDistance, calculatePrice } from '@/lib/data';
+import { calculatePrice, getPricingById } from '@/lib/data';
 import { sendEmail, generateBookingConfirmationEmail, generateAdminNotificationEmail } from '@/lib/email';
 import { z } from 'zod';
 
 const bookingSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
+  name: z.string().min(2, { message: 'A név legalább 2 karakter legyen.' }),
+  email: z.string().email({ message: 'Érvényes email címet adj meg.' }),
   phone: z.string().optional(),
-  from_location: z.string().min(1),
-  to_location: z.string().min(1),
-  pricingId: z.number().positive(),
+  from_location: z.string().min(1, { message: 'Az indulási hely megadása kötelező.' }),
+  to_location: z.string().min(1, { message: 'A célhely megadása kötelező.' }),
+  pricingId: z.number().positive({ message: 'Válassz érvényes díjcsomagot.' }),
   date: z.string().optional(),
-  passengers: z.number().int().min(1).max(4).optional(),
+  passengers: z.number().int().min(1, { message: 'Az utasok száma minimum 1.' }).max(4, { message: 'Az utasok száma maximum 4.' }).optional(),
   tripType: z.enum(['one-way', 'round-trip']).optional(),
-  luggageCount: z.number().int().min(0).optional(),
+  luggageCount: z.number().int().min(0, { message: 'A csomagok száma nem lehet negatív.' }).optional(),
   luggageSize: z.string().optional(),
   notes: z.string().optional(),
 });
+
+function toFieldErrors(issues: z.ZodIssue[]) {
+  const fieldErrors: Record<string, string> = {};
+
+  for (const issue of issues) {
+    const key = String(issue.path[0] || 'form');
+    if (!fieldErrors[key]) {
+      fieldErrors[key] = issue.message;
+    }
+  }
+
+  return fieldErrors;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,17 +39,21 @@ export async function POST(request: NextRequest) {
 
     const db = getDb();
 
-    // Get distance information
-    const distance = getDistance(validatedData.from_location, validatedData.to_location);
-    if (!distance) {
+    const pricing = getPricingById(validatedData.pricingId);
+    if (!pricing) {
       return NextResponse.json(
-        { error: 'Distance not found for these locations' },
-        { status: 404 }
+        {
+          error: 'A kiválasztott díjcsomag nem található.',
+          fieldErrors: {
+            pricingId: 'Válassz érvényes díjcsomagot.',
+          },
+        },
+        { status: 400 }
       );
     }
 
-    // Calculate price
-    const priceInfo = calculatePrice(distance.kilometers, validatedData.pricingId);
+    // Calculate fixed package price
+    const priceInfo = calculatePrice(validatedData.pricingId);
 
     // Insert booking
     const stmt = db.prepare(`
@@ -51,7 +68,7 @@ export async function POST(request: NextRequest) {
       validatedData.phone || null,
       validatedData.from_location,
       validatedData.to_location,
-      distance.kilometers,
+      null,
       validatedData.pricingId,
       priceInfo.totalPrice,
       validatedData.date || null,
@@ -72,13 +89,18 @@ export async function POST(request: NextRequest) {
         html: generateBookingConfirmationEmail(validatedData.name, {
           from: validatedData.from_location,
           to: validatedData.to_location,
-          kilometers: distance.kilometers,
+          basePrice: priceInfo.breakdown.basePrice,
+          kmPrice: priceInfo.breakdown.kmPrice,
           totalPrice: priceInfo.totalPrice,
-          bookingId: bookingId.toString(),          date: validatedData.date,
+          bookingId: bookingId.toString(),
+          serviceType: pricing.name,
+          date: validatedData.date,
           passengers: validatedData.passengers,
           tripType: validatedData.tripType,
           luggageCount: validatedData.luggageCount,
-          luggageSize: validatedData.luggageSize,        }),
+          luggageSize: validatedData.luggageSize,
+          notes: validatedData.notes,
+        }),
       });
     } catch (emailError) {
       console.error('Failed to send confirmation email:', emailError);
@@ -95,14 +117,19 @@ export async function POST(request: NextRequest) {
           html: generateAdminNotificationEmail(validatedData.name, validatedData.email, {
             from: validatedData.from_location,
             to: validatedData.to_location,
-            kilometers: distance.kilometers,
+            basePrice: priceInfo.breakdown.basePrice,
+            kmPrice: priceInfo.breakdown.kmPrice,
             totalPrice: priceInfo.totalPrice,
+            bookingId: bookingId.toString(),
+            serviceType: pricing.name,
             phone: validatedData.phone,
-            notes: validatedData.notes,            date: validatedData.date,
+            notes: validatedData.notes,
+            date: validatedData.date,
             passengers: validatedData.passengers,
             tripType: validatedData.tripType,
             luggageCount: validatedData.luggageCount,
-            luggageSize: validatedData.luggageSize,          }),
+            luggageSize: validatedData.luggageSize,
+          }),
         });
       }
     } catch (emailError) {
@@ -113,7 +140,7 @@ export async function POST(request: NextRequest) {
       {
         id: bookingId,
         ...validatedData,
-        kilometers: distance.kilometers,
+        kilometers: null,
         totalPrice: priceInfo.totalPrice,
         status: 'pending',
       },
@@ -123,10 +150,17 @@ export async function POST(request: NextRequest) {
     console.error('Booking error:', error);
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid booking data', details: error.issues }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'A foglalási adatok hibásak.',
+          fieldErrors: toFieldErrors(error.issues),
+          details: error.issues,
+        },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+    return NextResponse.json({ error: 'Nem sikerült létrehozni a foglalást.' }, { status: 500 });
   }
 }
 
@@ -137,6 +171,6 @@ export async function GET() {
     return NextResponse.json(bookings);
   } catch (error) {
     console.error('Get bookings error:', error);
-    return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
+    return NextResponse.json({ error: 'Nem sikerült lekérni a foglalásokat.' }, { status: 500 });
   }
 }

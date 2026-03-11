@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/components/ToastProvider';
 
 export default function ContactForm() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -63,8 +63,6 @@ export default function ContactForm() {
     }
 
     setLoading(true);
-    setError('');
-    setSuccess(false);
 
     try {
       const response = await fetch('/api/contact', {
@@ -78,17 +76,16 @@ export default function ContactForm() {
         throw new Error(data.error || 'Üzenetküldés sikertelen');
       }
 
-      setSuccess(true);
+      showToast('Üzenet sikeresen elküldve! Hamarosan válaszolunk.', 'success');
       setFieldErrors({});
       setFormData({
         name: '',
         email: '',
         message: '',
       });
-
-      setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ismeretlen hiba történt');
+      const message = err instanceof Error ? err.message : 'Ismeretlen hiba történt';
+      showToast(`Hiba: ${message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -96,17 +93,6 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {success && (
-        <div className="bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] text-white p-4 rounded-xl">
-          Üzenet sikeresen elküldve! Hamarosan válaszolunk.
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl">
-          Hiba: {error}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="group">

@@ -24,6 +24,9 @@ export function getDb(): Database.Database {
 function initializeSchema() {
   const database = db;
 
+  // Legacy cleanup: distance-based pricing was removed.
+  database.exec(`DROP TABLE IF EXISTS distances;`);
+
   // Pricing table
   database.exec(`
     CREATE TABLE IF NOT EXISTS pricing (
@@ -34,20 +37,6 @@ function initializeSchema() {
       description TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Distances table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS distances (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      from_location TEXT NOT NULL,
-      to_location TEXT NOT NULL,
-      kilometers REAL NOT NULL,
-      description TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(from_location, to_location)
     );
   `);
 
@@ -101,7 +90,6 @@ function initializeSchema() {
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email);
     CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-    CREATE INDEX IF NOT EXISTS idx_distances_locations ON distances(from_location, to_location);
     CREATE INDEX IF NOT EXISTS idx_services_sort_order ON services(sortOrder);
   `);
 

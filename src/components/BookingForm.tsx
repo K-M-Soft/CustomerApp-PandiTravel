@@ -1,22 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Pricing } from '@/lib/data';
 import DatePicker from 'react-datepicker';
 import { hu } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
+import { useToast } from '@/components/ToastProvider';
 
 interface BookingFormProps {
   pricings: Pricing[];
   onSuccess?: () => void;
 }
 
+interface BookingApiError {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
 export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,6 +36,20 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
     luggageSize: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (pricings.length === 0) {
+      return;
+    }
+
+    const hasCurrentPricing = pricings.some((pricing) => pricing.id === formData.pricingId);
+    if (!hasCurrentPricing) {
+      setFormData((prev) => ({
+        ...prev,
+        pricingId: pricings[0].id,
+      }));
+    }
+  }, [pricings, formData.pricingId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -103,8 +122,6 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
     }
 
     setLoading(true);
-    setError('');
-    setSuccess(false);
 
     try {
       // Convert selected date to ISO string format
@@ -117,11 +134,16 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Booking failed');
+        const data = (await response.json()) as BookingApiError;
+
+        if (data.fieldErrors && Object.keys(data.fieldErrors).length > 0) {
+          setFieldErrors(data.fieldErrors);
+        }
+
+        throw new Error(data.error || 'A foglalási adatok hibásak.');
       }
 
-      setSuccess(true);
+      showToast('Sikeres foglalás! Hamarosan fog kapni egy megerősítő emailt a foglalásáról.', 'success');
       setSelectedDate(null);
       setFieldErrors({});
       setFormData({
@@ -140,11 +162,9 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
       });
 
       onSuccess?.();
-
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Ismeretlen hiba történt.';
+      showToast(`Hiba: ${message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -152,23 +172,6 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {success && (
-        <div className="bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] text-white p-4 rounded-xl flex items-center space-x-3">
-          <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Sikeres foglalás! Hamarosan fog kapni egy megerősítő emailt a foglalásáról.</span>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl flex items-center space-x-3">
-          <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Hiba: {error}</span>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Name */}
@@ -239,7 +242,11 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
             name="pricingId"
             value={formData.pricingId}
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)] focus:ring-2 focus:ring-[rgba(244,204,126,0.25)]"
+            className={`w-full px-4 py-3 bg-slate-800/50 border rounded-xl text-white focus:outline-none focus:ring-2 ${
+              fieldErrors.pricingId
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/25'
+                : 'border-slate-600 focus:border-[rgb(244,204,126)] focus:ring-[rgba(244,204,126,0.25)]'
+            }`}
           >
             {pricings.map((pricing) => (
               <option key={pricing.id} value={pricing.id}>
@@ -247,6 +254,7 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
               </option>
             ))}
           </select>
+          {fieldErrors.pricingId && <p className="mt-1 text-sm text-red-400">{fieldErrors.pricingId}</p>}
         </div>
 
         {/* From Location */}

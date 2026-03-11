@@ -17,6 +17,17 @@ html {
   }
 }
 
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
 @keyframes slide-in-left {
   from {
     opacity: 0;
@@ -60,6 +71,10 @@ html {
 /* Animation classes */
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.25s ease-in forwards;
 }
 
 .animate-slide-in-left {

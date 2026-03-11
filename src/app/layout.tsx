@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Script from 'next/script';
+import ToastProvider from '@/components/ToastProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://panditravel.hu'),
@@ -176,8 +177,10 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <Navbar />
-        {children}
+        <ToastProvider>
+          <Navbar />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );
