@@ -5,6 +5,7 @@ import Image from 'next/image';
 import BookingForm from '@/components/BookingForm';
 import ContactForm from '@/components/ContactForm';
 import ServiceCard from '@/components/ServiceCard';
+import GallerySection from '@/components/GallerySection';
 import type { Pricing, Service } from '@/lib/data';
 
 const fallbackServices: Pick<Service, 'id' | 'title' | 'description'>[] = [
@@ -126,6 +127,9 @@ export default function Home() {
         </article>
       </section>
 
+      {/* Gallery Section */}
+      <GallerySection />
+
       {/* Services Section */}
       <section id="services" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20" aria-labelledby="services-heading">
         <h2 id="services-heading" className="text-4xl font-bold text-white mb-4 text-center animate-fade-in">
@@ -148,7 +152,11 @@ export default function Home() {
               Díjak és Tariffák
             </h2>
             <div className="h-1 w-24 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-12 rounded-full animate-fade-in" aria-hidden="true"></div>
-            
+
+            <p className="text-lg text-slate-300 leading-relaxed text-center max-w-3xl mx-auto mb-12 animate-fade-in">
+              Utazásaink árát előre meghatározott tarifán számoljuk, amiket feltüntetünk több fórumon is! Alapdíjból és km/viteldíjból határozzuk meg a személyszállítási fuvar teljes költségét, amit már indulás előtt az Ügyfél tudtára adunk! Ezáltal kiszámíthatóan és pontosan, váratlan kiadás nélkül igyekszünk minden Ügyfelünket biztosítani és kielégíteni már az úticél elérését megelőzően!
+            </p>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {pricings.map((pricing, index) => (
                 <article

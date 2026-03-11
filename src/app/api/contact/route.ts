@@ -12,11 +12,11 @@ function generateContactEmail(name: string, email: string, message: string): str
   return `
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
-        <h2>Uj kapcsolatfelvetel</h2>
+        <h2>Új kapcsolatfelvétel</h2>
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Nev:</strong> ${name}</p>
+          <p><strong>Név:</strong> ${name}</p>
           <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-          <p><strong>Uzenet:</strong></p>
+          <p><strong>Üzenet:</strong></p>
           <p style="white-space: pre-wrap;">${message}</p>
         </div>
       </body>
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     await sendEmail({
       to: adminEmail,
-      subject: `Uj kapcsolatfelvetel - ${validatedData.name}`,
+      subject: `Új kapcsolatfelvétel - ${validatedData.name}`,
       html: generateContactEmail(
         validatedData.name,
         validatedData.email,
@@ -48,13 +48,13 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Hibas kapcsolatfelveteli adatok', details: error.issues },
+        { error: 'Hibás kapcsolatfelvételi adatok', details: error.issues },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Nem sikerult elkuldeni az uzenetet' },
+      { error: 'Nem sikerült elküldeni az üzenetet' },
       { status: 500 }
     );
   }
