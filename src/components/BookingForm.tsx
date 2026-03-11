@@ -248,7 +248,7 @@ export default function BookingForm({ pricings, onSuccess }: BookingFormProps) {
                 : 'border-slate-600 focus:border-[rgb(244,204,126)] focus:ring-[rgba(244,204,126,0.25)]'
             }`}
           >
-            {pricings.map((pricing) => (
+            {pricings?.map((pricing) => (
               <option key={pricing.id} value={pricing.id}>
                 {pricing.name}
               </option>

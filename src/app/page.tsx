@@ -158,7 +158,7 @@ export default function Home() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {pricings.map((pricing, index) => (
+              {pricings?.map((pricing, index) => (
                 <article
                   key={pricing.id}
                   className="glass-effect rounded-2xl p-8 border border-[rgba(244,204,126,0.30)] hover:border-[rgb(244,204,126)] transition-all duration-300 hover:shadow-2xl hover:shadow-[rgba(244,204,126,0.20)] hover:-translate-y-2 animate-fade-in"
