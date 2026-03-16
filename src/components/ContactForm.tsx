@@ -92,7 +92,7 @@ export default function ContactForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="group">

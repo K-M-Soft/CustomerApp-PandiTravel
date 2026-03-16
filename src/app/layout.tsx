@@ -1,8 +1,14 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
-import Script from 'next/script';
 import ToastProvider from '@/components/ToastProvider';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0f172a',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://panditravel.hu'),
@@ -10,7 +16,7 @@ export const metadata: Metadata = {
     default: 'Pándi Travel - Prémium Tesla Személyszállítás | VIP Sofőrszolgálat',
     template: '%s | Pándi Travel'
   },
-  description: 'Prémium Tesla Model 3 személyszállítás Magyarországon és külföldön. Kényelmes, környezetbarát VIP transzfer szolgáltatás.RepTéri transzfer, egész napos bérlés. Foglaljon most!',
+  description: 'Prémium Tesla Model 3 személyszállítás Magyarországon és külföldön. Kényelmes, környezetbarát VIP transzfer szolgáltatás. Reptéri transzfer, egész napos bérlés. Foglaljon most!',
   keywords: [
     'tesla transzfer',
     'személyszállítás',
@@ -71,6 +77,10 @@ export const metadata: Metadata = {
     canonical: 'https://panditravel.hu',
   },
   category: 'transportation',
+  icons: {
+    icon: '/logo.favico',
+    apple: '/logo.jpeg',
+  },
 };
 
 const jsonLd = {
@@ -82,7 +92,7 @@ const jsonLd = {
   logo: 'https://panditravel.hu/logo.jpeg',
   image: 'https://panditravel.hu/logo.jpeg',
   '@id': 'https://panditravel.hu',
-  telephone: '+36-XX-XXX-XXXX',
+  telephone: '+36-20-928-2626',
   priceRange: '$$',
   address: {
     '@type': 'PostalAddress',
@@ -149,13 +159,8 @@ const jsonLd = {
       },
     ],
   },
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '5',
-    reviewCount: '10',
-  },
   sameAs: [
-    // Add social media links here when available
+    'https://www.facebook.com/profile.php?id=61579373423666',
   ],
 };
 
@@ -167,10 +172,6 @@ export default function RootLayout({
   return (
     <html lang="hu" className="scroll-smooth">
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/logo.jpeg" />
-        <meta name="theme-color" content="#0f172a" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
