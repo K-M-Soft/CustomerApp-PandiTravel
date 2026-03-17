@@ -41,19 +41,19 @@ export default function Navbar() {
           {/* Logo */}
           <button
             onClick={() => scrollToSection('home')}
-            className="flex items-center gap-3 rounded-full px-3 py-2 hover:bg-zinc-800/70 transition-all"
+            className="flex min-w-0 max-w-[calc(100%-3.5rem)] items-center gap-2 rounded-full px-2 py-2 hover:bg-zinc-800/70 transition-all sm:gap-3 sm:px-3"
           >
-            <span className="relative w-14 h-14 rounded-xl ring-2 ring-[rgba(244,204,126,0.50)] shadow-lg shadow-[rgba(244,204,126,0.20)] bg-black/50 p-1">
+            <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-black/50 p-1 ring-2 ring-[rgba(244,204,126,0.50)] shadow-lg shadow-[rgba(244,204,126,0.20)] sm:h-14 sm:w-14">
               <Image
                 src="/logo.jpeg"
                 alt="Pándi Travel logó"
                 fill
                 className="object-contain"
-                sizes="56px"
+                sizes="(max-width: 640px) 48px, 56px"
                 priority
               />
             </span>
-            <span className="text-xl md:text-2xl font-bold text-white hover:text-[rgb(244,204,126)] transition-colors">
+            <span className="min-w-0 truncate text-lg font-bold text-white transition-colors hover:text-[rgb(244,204,126)] sm:text-xl md:text-2xl">
               Pándi Travel
             </span>
           </button>
