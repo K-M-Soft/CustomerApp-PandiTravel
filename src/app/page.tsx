@@ -303,6 +303,29 @@ export default function Home() {
                 </div>
               </a>
             </nav>
+            <section className="mb-8" aria-labelledby="partners-heading">
+              <h3 id="partners-heading" className="text-lg font-semibold text-white mb-4">
+                Partnereink
+              </h3>
+              <div className="flex justify-center">
+                <a
+                  href="https://5star-transportation.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 rounded-full border border-[rgba(244,204,126,0.25)] bg-slate-900/60 px-4 py-3 text-white transition-colors hover:border-[rgb(244,204,126)] hover:text-[rgb(244,204,126)]"
+                  aria-label="5Star Luxury Transportation megnyitása"
+                >
+                  <Image
+                    src="https://5star-transportation.com/favicon.ico"
+                    alt="5Star Luxury Transportation ikon"
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 rounded-sm"
+                  />
+                  <span className="text-sm font-medium sm:text-base">5Star Luxury Transportation</span>
+                </a>
+              </div>
+            </section>
             <p className="text-slate-400 text-sm animate-fade-in">
               © 2026 Pándi Travel. Minden jog fenntartva.
             </p>
