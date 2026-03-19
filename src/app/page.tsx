@@ -104,6 +104,15 @@ export default function Home() {
             Pándi Travel
           </h1>
           <div className="h-1 w-32 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-8 rounded-full animate-fade-in delay-100" aria-hidden="true"></div>
+          <div className="mb-8 animate-fade-in delay-150">
+            <a
+              href="tel:+36209282626"
+              className="inline-block text-lg font-semibold text-[rgb(244,204,126)] bg-black/40 px-6 py-2 rounded-full shadow-sm hover:bg-black/60 transition-colors"
+              aria-label="Hívjon minket: +36-20-928-2626"
+            >
+              +36-20-928-2626
+            </a>
+          </div>
           
           <p className="text-lg sm:text-xl text-slate-300 mb-6 leading-relaxed animate-fade-in delay-200">
             Üdvözöljük a Pándi Travel oldalon! Személyszállító sofőr szolgáltatásunkkal <span className="text-[rgb(244,204,126)] font-semibold">PRÉMIUM környezetben</span> szállítjuk ügyfeleinket az Ön által meghatározott pontos helyre/címre!
