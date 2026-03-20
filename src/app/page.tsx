@@ -165,7 +165,7 @@ export default function Home() {
         {!loading && pricings.length > 0 && (
           <div>
             <h2 id="pricing-heading" className="text-4xl font-bold text-white mb-4 text-center animate-fade-in">
-              Díjak és Tariffák
+              Díjak és Tarifák
             </h2>
             <div className="h-1 w-24 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-12 rounded-full animate-fade-in" aria-hidden="true"></div>
 
