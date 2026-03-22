@@ -24,10 +24,13 @@ type DashboardData = {
   services: Service[];
 };
 
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [locked, setLocked] = useState<boolean>(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [sessionSecret, setSessionSecret] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +58,14 @@ export default function AdminPage() {
       const response = await fetch('/api/admin/session');
       const result = await response.json();
       setAuthenticated(Boolean(result.authenticated));
+      setLocked(Boolean(result.locked));
       if (result.authenticated) {
         await loadDashboard();
       }
     } catch (error) {
       console.error('Session check failed:', error);
       setAuthenticated(false);
+      setLocked(false);
     }
   };
 
@@ -84,23 +89,44 @@ export default function AdminPage() {
     setLoginError('');
 
     try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      let response;
+      if (locked) {
+        response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionSecret }),
+        });
+      } else {
+        response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+      }
 
+      const result = await response.json();
       if (!response.ok) {
-        const result = await response.json();
         throw new Error(result.error || 'Belépés sikertelen.');
+      }
+
+      if (locked && result.unlocked) {
+        setLocked(false);
+        setSessionSecret('');
+        setLoginError('');
+        // Optionally, reload session state
+        await checkSession();
+        return;
       }
 
       setAuthenticated(true);
       setUsername('');
       setPassword('');
+      setSessionSecret('');
       await loadDashboard();
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Belépés sikertelen.');
+      // If unlock failed, stay locked
+      await checkSession();
     } finally {
       setLoading(false);
     }
@@ -284,33 +310,57 @@ export default function AdminPage() {
       <main className="min-h-screen bg-black text-white px-4 py-16">
         <div className="max-w-md mx-auto glass-effect border border-[rgba(244,204,126,0.30)] rounded-2xl p-8">
           <h1 className="text-3xl font-bold mb-6">Admin belépés</h1>
-          <form onSubmit={login} className="space-y-4">
-            <div>
-              <label className="block text-sm text-slate-300 mb-1">Felhasználónév</label>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-slate-300 mb-1">Jelszó</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)]"
-              />
-            </div>
-            {loginError && <p className="text-red-400 text-sm">{loginError}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[rgb(244,204,126)] text-black font-bold py-3 rounded-xl disabled:bg-gray-500"
-            >
-              {loading ? 'Belépés...' : 'Belépés'}
-            </button>
-          </form>
+          {locked ? (
+            <form onSubmit={login} className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Titkos kulcs</label>
+                <input
+                  type="password"
+                  value={sessionSecret}
+                  onChange={(e) => setSessionSecret(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)]"
+                  autoFocus
+                />
+              </div>
+              {loginError && <p className="text-red-400 text-sm">{loginError}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[rgb(244,204,126)] text-black font-bold py-3 rounded-xl disabled:bg-gray-500"
+              >
+                {loading ? 'Ellenőrzés...' : 'Feloldás'}
+              </button>
+              <p className="text-slate-400 text-xs mt-2">Túl sok hibás próbálkozás miatt a fiók zárolva lett. Add meg a titkos kulcsot a feloldáshoz.</p>
+            </form>
+          ) : (
+            <form onSubmit={login} className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Felhasználónév</label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Jelszó</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600 rounded-xl text-white focus:outline-none focus:border-[rgb(244,204,126)]"
+                />
+              </div>
+              {loginError && <p className="text-red-400 text-sm">{loginError}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[rgb(244,204,126)] text-black font-bold py-3 rounded-xl disabled:bg-gray-500"
+              >
+                {loading ? 'Belépés...' : 'Belépés'}
+              </button>
+            </form>
+          )}
         </div>
       </main>
     );
