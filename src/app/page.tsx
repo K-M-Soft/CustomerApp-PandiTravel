@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import useInView from '@/lib/useInView';
+import { useInView } from '@/lib/useInView';
 import Image from 'next/image';
 import BookingForm from '@/components/BookingForm';
 import ContactForm from '@/components/ContactForm';
@@ -40,7 +40,7 @@ export default function Home() {
   const [pricings, setPricings] = useState<Pricing[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pricingInfoRef, pricingInfoInView] = useInView();
+  const [pricingInfoRef, pricingInfoInView] = useInView<HTMLParagraphElement>();
 
   const fetchInitialData = async () => {
     setLoading(true);

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-export default function useInView(threshold = 0.2): [React.RefObject<HTMLElement>, boolean] {
-  const ref = useRef<HTMLElement | null>(null);
+export function useInView<T extends HTMLElement = HTMLElement>(threshold = 0.2): [React.RefObject<T>, boolean] {
+  const ref = useRef<T>(null as any);
   // Default to false so animation always triggers on scroll
   const [inView, setInView] = useState(false);
 
