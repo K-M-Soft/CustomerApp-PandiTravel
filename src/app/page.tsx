@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useInView from '@/lib/useInView';
 import Image from 'next/image';
 import BookingForm from '@/components/BookingForm';
 import ContactForm from '@/components/ContactForm';
@@ -39,6 +40,7 @@ export default function Home() {
   const [pricings, setPricings] = useState<Pricing[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pricingInfoRef, pricingInfoInView] = useInView();
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -123,7 +125,7 @@ export default function Home() {
           
           <button
             onClick={() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' })}
-            className="mt-10 bg-[rgb(244,204,126)] text-black px-8 py-4 rounded-full font-semibold text-lg shadow-lg hover:shadow-[rgba(244,204,126,0.40)] transition-all transform hover:scale-105 animate-fade-in delay-400"
+            className="mt-10 bg-[rgb(244,204,126)] text-black px-8 py-4 rounded-full font-semibold text-lg shadow-lg hover:shadow-[rgba(244,204,126,0.40)] transition-all transform hover:scale-105"
           >
             Foglaljon most!
           </button>
@@ -162,22 +164,26 @@ export default function Home() {
 
       {/* Pricing Section */}
       <section id="pricing" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20" aria-labelledby="pricing-heading">
+        <h2 id="pricing-heading" className="text-4xl font-bold text-white mb-4 text-center animate-fade-in">
+          Díjak és Tarifák
+        </h2>
+        <div className="h-1 w-24 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-12 rounded-full animate-fade-in" aria-hidden="true"></div>
+
+        <p
+          ref={pricingInfoRef}
+          className={`text-lg text-slate-300 leading-relaxed text-center max-w-3xl mx-auto mb-12 ${pricingInfoInView ? 'animate-fade-in' : 'opacity-0'} transition-opacity duration-500`}
+          style={{ minHeight: 40 }}
+        >
+          Utazásaink árát előre meghatározott tarifán számoljuk, amiket feltüntetünk több fórumon is! Alapdíjból és km/viteldíjból határozzuk meg a személyszállítási fuvar teljes költségét, amit már indulás előtt az Ügyfél tudtára adunk! Ezáltal kiszámíthatóan és pontosan, váratlan kiadás nélkül igyekszünk minden Ügyfelünket biztosítani és kielégíteni már az úticél elérését megelőzően!
+        </p>
         {!loading && pricings.length > 0 && (
           <div>
-            <h2 id="pricing-heading" className="text-4xl font-bold text-white mb-4 text-center animate-fade-in">
-              Díjak és Tarifák
-            </h2>
-            <div className="h-1 w-24 bg-gradient-to-r from-[rgb(244,204,126)] to-[rgb(244,204,126)] mx-auto mb-12 rounded-full animate-fade-in" aria-hidden="true"></div>
-
-            <p className="text-lg text-slate-300 leading-relaxed text-center max-w-3xl mx-auto mb-12 animate-fade-in">
-              Utazásaink árát előre meghatározott tarifán számoljuk, amiket feltüntetünk több fórumon is! Alapdíjból és km/viteldíjból határozzuk meg a személyszállítási fuvar teljes költségét, amit már indulás előtt az Ügyfél tudtára adunk! Ezáltal kiszámíthatóan és pontosan, váratlan kiadás nélkül igyekszünk minden Ügyfelünket biztosítani és kielégíteni már az úticél elérését megelőzően!
-            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {pricings?.map((pricing, index) => (
                 <article
                   key={pricing.id}
-                  className="glass-effect rounded-2xl p-8 border border-[rgba(244,204,126,0.30)] hover:border-[rgb(244,204,126)] transition-all duration-300 hover:shadow-2xl hover:shadow-[rgba(244,204,126,0.20)] hover:-translate-y-2 animate-fade-in"
+                  className="glass-effect rounded-2xl p-8 border border-[rgba(244,204,126,0.30)] hover:border-[rgb(244,204,126)] transition-all duration-300 hover:shadow-2xl hover:shadow-[rgba(244,204,126,0.20)] hover:-translate-y-2"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <header className="flex items-center justify-between mb-4">

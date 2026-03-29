@@ -70,7 +70,7 @@ html {
 
 /* Animation classes */
 .animate-fade-in {
-  animation: fade-in 0.6s ease-out forwards;
+  animation: fade-in 2.2s ease-out forwards;
 }
 
 .animate-toast-out {
